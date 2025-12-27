@@ -1,4 +1,4 @@
-# FlashGenius - AI-Powered Flashcard Generator
+# Catch It - AI-Powered Flashcard Generator
 
 #### Video Demo: https://youtu.be/7JA0wTWTGMI
 
