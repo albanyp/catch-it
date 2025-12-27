@@ -1,0 +1,165 @@
+{% extends "layout.html" %}
+
+{% block title %}{{ deck.title }}{% endblock %}
+
+{% block main %}
+<div class="container mt-5">
+    <h2>{{ deck.title }}</h2>
+    <p>Progress: <span id="mastered-count">{{ mastered }}</span>/<span id="total-count">{{ total }}</span> mastered</p>
+
+    <div id="card-container" class="text-center mt-4">
+        <div class="card mx-auto mw-100" style="min-width: 380px; min-height: 300px; cursor: pointer;" id="flashcard">
+            <div class="card-body d-flex align-items-center justify-content-center">
+                <h3 id="card-text">Click to start</h3>
+            </div>
+        </div>
+
+        <div class="mt-4">
+            <button class="btn m-2 btn-secondary" id="flip-btn" disabled>Flip Card</button>
+            <button class="btn m-2 btn-success" id="know-btn" style="display: none;">✓ I Know This</button>
+            <button class="btn m-2 btn-danger" id="error-btn" style="display: none;">✗ AI Made a Mistake</button>
+            <button class="btn m-2 btn-warning" id="next-btn" style="display: none;">Next Card</button>
+        </div>
+        <div id="card-update-container" class="mt-4 d-none d-flex flex-column justify-content-center align-items-center">
+            <form id="update-form" action="/update" method="post">
+                <input type="hidden" name="card-id" id="card-id">
+                <div class="mb-3">
+                    <textarea class="form-control" name="back-content" rows="5" placeholder="Enter what you think is correct"></textarea>
+                    <small class="form-text text-muted">Type the content you believe the flashcard should say.</small>
+                </div>
+                <button class="btn btn-success" type="submit">Submit new answer</button>
+            </form>
+        </div>
+
+    </div>
+</div>
+
+<script>
+    let cards = {{ cards | tojson }};
+    const deck = {{ deck | tojson }};
+    let currentIndex = 0;
+    let showingFront = true;
+
+    const cardText = document.getElementById('card-text');
+    const flashcard = document.getElementById('flashcard');
+    const flipBtn = document.getElementById('flip-btn');
+    const knowBtn = document.getElementById('know-btn');
+    const errorBtn = document.getElementById('error-btn');
+    const nextBtn = document.getElementById('next-btn');
+    const masteredCountEl = document.getElementById('mastered-count');
+    const totalCountEl = document.getElementById('total-count');
+    const updateCardEl = document.getElementById('card-update-container')
+    const updateForm = document.getElementById("update-form");
+
+    updateForm.addEventListener("submit", (e) => {
+        e.preventDefault();
+
+        const formData = new FormData(updateForm);
+
+        fetch("/update", {
+            method: "POST",
+            body: formData
+        })
+        .then(() => {
+            return fetch(`/study/data/${deck.id}`);
+        })
+        .then(res => res.json())
+        .then(data => {
+            cards = data.cards;
+            masteredCountEl.textContent = data.mastered;
+            loadCard();
+            updateCardEl.classList.add("d-none");
+        });
+    });
+
+    function loadCard() {
+        if (currentIndex >= cards.length) {
+            cardText.textContent = "You've completed all cards!";
+            flipBtn.style.display = 'none';
+            knowBtn.style.display = 'none';
+            errorBtn.style.display = 'none';
+            nextBtn.style.display = 'none';
+            updateCardEl.classList.add("d-none");
+            return;
+        }
+
+        const card = cards[currentIndex];
+        cardText.textContent = card.front;
+        document.getElementById("card-id").value = cards[currentIndex].id;
+        showingFront = true;
+        flipBtn.disabled = false;
+        knowBtn.style.display = 'none';
+        errorBtn.style.display = 'none';
+        nextBtn.style.display = 'none';
+        updateCardEl.classList.add("d-none");
+
+        if (card.mastered) {
+            flashcard.style.borderColor = 'green';
+        } else {
+            flashcard.style.borderColor = '#dee2e6';
+        }
+    }
+
+    function flipCard() {
+        const card = cards[currentIndex];
+
+        if (showingFront) {
+            cardText.textContent = card.back;
+            knowBtn.style.display = 'inline-block';
+            errorBtn.style.display = 'inline-block';
+            nextBtn.style.display = 'inline-block';
+        } else {
+            cardText.textContent = card.front;
+            knowBtn.style.display = 'none';
+            errorBtn.style.display = 'none';
+            nextBtn.style.display = 'none';
+            updateCardEl.classList.add("d-none");
+        }
+
+        showingFront = !showingFront;
+    }
+
+    function markKnown() {
+        const card = cards[currentIndex];
+
+        fetch(`/mark_mastered/${card.id}`, { method: 'POST' })
+            .then(() => {
+                cards[currentIndex].mastered = 1;
+                fetch(`/study/mastered/${deck.id}`).then((response) => response.json())
+                .then(response => {
+                    masteredCountEl.textContent = response.mastered;
+                    totalCountEl.textContent = response.total;
+
+                    updateCardEl.classList.add("d-none");
+                })
+            }).then(() => nextCard());
+    }
+
+    function markError() {
+        const card = cards[currentIndex];
+
+        fetch(`/mark_error/${card.id}`, { method: 'POST' })
+            .then(() => {
+                cards[currentIndex].has_error = 1;
+                alert('Error reported! This helps you learn critically.');
+                updateCardEl.classList.remove("d-none");
+            });
+    }
+
+    function nextCard() {
+        updateCardEl.classList.add("d-none");
+        currentIndex++;
+        loadCard();
+    }
+
+    // Event listeners
+    flipBtn.addEventListener('click', flipCard);
+    flashcard.addEventListener('click', flipCard);
+    knowBtn.addEventListener('click', markKnown);
+    errorBtn.addEventListener('click', markError);
+    nextBtn.addEventListener('click', nextCard);
+
+    // Start
+    loadCard();
+</script>
+{% endblock %}

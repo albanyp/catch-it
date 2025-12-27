@@ -1,0 +1,47 @@
+{% extends "layout.html" %}
+
+{% block title %}Create Deck{% endblock %}
+
+{% block main %}
+<div class="container mt-5">
+    <h2 class="mb-3">Create Flashcard Deck</h2>
+    <form action="/create" method="post">
+        <div class="mb-3 d-flex">
+            <select name="deck" id="deck-select" class="form-select">
+                <option value="deck" selected>New Deck</option>
+                {% for deck in decks %}
+                    <option value="{{ deck.id }}">{{ deck.title }}</option>
+                {% endfor %}
+            </select>
+              <input type="number" class="ms-3 form-control" name="num_cards" value="10" min="3" max="20"
+                    placeholder="Number of cards">
+        </div>
+        <div class="d-flex mb-3">
+            <input type="text" class="form-control" id="deck-title" name="title" placeholder="Deck Title (e.g., CS50: Algorithms & Data Structures)">
+            <input type="text" class="ms-3 form-control" id="deck-description" name="description" placeholder="Deck Description (e.g, CS50: Needed to learn it all in a week)">
+        </div>
+        </div>
+        <div class="mb-3">
+            <textarea class="form-control" name="content" rows="10"
+                      placeholder="Paste your study material here..." required></textarea>
+            <small class="form-text text-muted">Paste notes, textbook passages, or any study material. AI will generate flashcards.</small>
+        </div>
+        <button type="submit" class="btn btn-primary">Generate Flashcards</button>
+    </form>
+</div>
+<script>
+    document.getElementById('deck-select').addEventListener('change', function() {
+        const titleInput = document.getElementById('deck-title');
+        const descriptionInput = document.getElementById('deck-description')
+
+        if (this.value === 'deck') {
+            titleInput.style.display = 'block';
+            descriptionInput.style.display = 'block';
+            return;
+        }
+
+        titleInput.style.display = 'none';
+        descriptionInput.style.display = 'none';
+    });
+</script>
+{% endblock %}
